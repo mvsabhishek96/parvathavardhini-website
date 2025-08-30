@@ -15,6 +15,7 @@ import { CommitteeMember } from '@/types/committee';
 
 const SubmissionsList = () => {
   const { user } = useAuth();
+  console.log('User object in SubmissionsList:', user);
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>([]);
   const [loading, setLoading] = useState(true);
