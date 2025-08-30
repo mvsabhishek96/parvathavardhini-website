@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import AuthButton from "@/components/ui/AuthButton";
+// Removed legacy UI imports
 import { auth, db } from '@/lib/firebase/client';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
 import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
@@ -55,7 +52,6 @@ const LoginForm = () => {
       } else {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        
         if (!user.emailVerified) {
             throw new Error('Please verify your email first');
         }
@@ -80,41 +76,59 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="form-container active" id="loginForm">
+    <div className="form-container active relative" id="loginForm">
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center z-20 rounded-xl" style={{backdropFilter: 'blur(2px)'}}>
+          <div className="loader" style={{ borderTopColor: '#b9935a', width: 48, height: 48, borderWidth: 6 }} />
+          <span className="mt-4 text-amber-900 font-semibold text-lg animate-pulse">Processing...</span>
+        </div>
+      )}
       <h2>
         <i className={authMode === 'signIn' ? 'fas fa-user-circle' : 'fas fa-user-plus'}></i>
         {authMode === 'signIn' ? ' Committee Member Login' : ' Committee Member Sign Up'}
       </h2>
-      
       {authMode === 'signUp' && (
         <>
           <div className="form-group">
-            <Label htmlFor="signupName">Your Name:</Label>
-            <Input type="text" id="signupName" name="signupName" placeholder="Your Full Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <label htmlFor="signupName">Your Name:</label>
+            <input type="text" id="signupName" name="signupName" placeholder="Your Full Name" value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-yellow-700/30 focus:border-yellow-700 focus:ring-2 focus:ring-yellow-200" />
           </div>
           <div className="form-group">
-            <Label htmlFor="signupMobile">Your Mobile Number:</Label>
-            <Input type="tel" id="signupMobile" name="signupMobile" placeholder="9876543210" value={mobile} onChange={(e) => setMobile(e.target.value)} />
+            <label htmlFor="signupMobile">Your Mobile Number:</label>
+            <input type="tel" id="signupMobile" name="signupMobile" placeholder="9876543210" value={mobile} onChange={(e) => setMobile(e.target.value)} className="rounded-lg border border-yellow-700/30 focus:border-yellow-700 focus:ring-2 focus:ring-yellow-200" />
           </div>
         </>
       )}
-
       <div className="form-group">
-        <Label htmlFor="email">Email:</Label>
-        <Input type="email" id="email" name="email" required placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+  <label htmlFor="email">Email:</label>
+  <input type="email" id="email" name="email" required placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg border border-yellow-700/30 focus:border-yellow-700 focus:ring-2 focus:ring-yellow-200" />
       </div>
       <div className="form-group">
-        <Label htmlFor="password">Password:</Label>
-        <Input type="password" id="password" name="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+  <label htmlFor="password">Password:</label>
+  <input type="password" id="password" name="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="rounded-lg border border-yellow-700/30 focus:border-yellow-700 focus:ring-2 focus:ring-yellow-200" />
       </div>
-
-      <AuthButton 
-        onClick={handleAuthAction} 
-        text={loading ? 'Processing...' : (authMode === 'signIn' ? 'Login' : 'Sign Up')}
-        icon={loading ? 'fas fa-spinner fa-spin' : (authMode === 'signIn' ? 'fas fa-sign-in-alt' : 'fas fa-user-plus')}
+      <button
+        type="button"
+        onClick={handleAuthAction}
         disabled={loading}
-      />
-
+        className="w-full py-2 rounded-lg bg-yellow-800 hover:bg-yellow-700 text-white font-semibold transition-colors duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        aria-busy={loading}
+      >
+        {loading ? (
+          <>
+            <i className="fas fa-spinner fa-spin"></i> Processing...
+          </>
+        ) : authMode === 'signIn' ? (
+          <>
+            <i className="fas fa-sign-in-alt"></i> Login
+          </>
+        ) : (
+          <>
+            <i className="fas fa-user-plus"></i> Sign Up
+          </>
+        )}
+      </button>
       <div className="auth-toggle">
         {authMode === 'signIn' ? (
           <>Don&apos;t have an account? <a href="#" onClick={() => toggleAuthMode('signUp')}>Sign up</a></>
@@ -122,12 +136,10 @@ const LoginForm = () => {
           <>Already have an account? <a href="#" onClick={() => toggleAuthMode('signIn')}>Sign in</a></>
         )}
       </div>
-
       {message && <div className="message error">{message}</div>}
-
-      <Button id="resendVerificationButton" className="secondary-btn" style={{ display: 'none', marginTop: '10px' }}>
+      <button id="resendVerificationButton" className="secondary-btn" style={{ display: 'none', marginTop: '10px' }} aria-hidden="true">
         <i className="fas fa-redo"></i> Resend Verification Email
-      </Button>
+      </button>
     </div>
   );
 };

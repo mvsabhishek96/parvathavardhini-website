@@ -192,8 +192,13 @@ https://maps.app.goo.gl/5NKoQcKA87QVDXm37
 
   if (view === 'success') {
     return (
-      <div className="form-container active" id="successMessage">
-        <h2><i className="fas fa-check-circle"></i> Donation Saved!</h2>
+      <div className="form-container active max-w-lg mx-auto border-2 border-amber-400 rounded-2xl bg-white/90 shadow-xl p-10 relative" id="successMessage">
+        {/* Decorative gold border top */}
+        <div className="absolute left-0 top-0 w-full h-2 rounded-t-2xl" style={{ background: 'linear-gradient(90deg, #b9935a 0%, #f2e1c2 100%)' }} />
+        <h2 className="text-3xl font-display font-bold text-center mb-4 text-amber-900 drop-shadow-lg tracking-wide flex flex-col items-center gap-2">
+          <span className="inline-block text-4xl text-green-700"><i className="fas fa-check-circle"></i></span>
+          Donation Saved!
+        </h2>
         <p className="message success">The donation has been recorded successfully.</p>
         <Button onClick={() => window.open(whatsappLink, '_blank')} className="success-btn w-full mt-4">
           <i className="fab fa-whatsapp"></i> Send WhatsApp Receipt
@@ -201,15 +206,22 @@ https://maps.app.goo.gl/5NKoQcKA87QVDXm37
         <Button onClick={resetForm} className="secondary-btn w-full" style={{ marginTop: '10px' }}>
           <i className="fas fa-plus-circle"></i> Make Another Donation
         </Button>
+        {/* Decorative gold border bottom */}
+        <div className="absolute left-0 bottom-0 w-full h-2 rounded-b-2xl" style={{ background: 'linear-gradient(90deg, #b9935a 0%, #f2e1c2 100%)' }} />
       </div>
     )
   }
 
   if (view === 'confirmation' && submittedData) {
     return (
-      <div className="form-container active" id="confirmation">
-        <h2><i className="fas fa-check-circle"></i> Confirm Your Details</h2>
-        <div className="confirmation-details">
+      <div className="form-container active max-w-lg mx-auto border-2 border-amber-400 rounded-2xl bg-white/90 shadow-xl p-10 relative" id="confirmation">
+        {/* Decorative gold border top */}
+        <div className="absolute left-0 top-0 w-full h-2 rounded-t-2xl" style={{ background: 'linear-gradient(90deg, #b9935a 0%, #f2e1c2 100%)' }} />
+        <h2 className="text-3xl font-display font-bold text-center mb-4 text-amber-900 drop-shadow-lg tracking-wide flex flex-col items-center gap-2">
+          <span className="inline-block text-4xl text-yellow-700"><i className="fas fa-check-circle"></i></span>
+          Confirm Your Details
+        </h2>
+        <div className="confirmation-details bg-amber-50/80 rounded-xl p-4 border border-amber-200 mb-6">
           <p><strong>Committee Member:</strong> <span>{user?.name || user?.email}</span></p>
           <p><strong>Name:</strong> <span>{submittedData.name}</span></p>
           <p><strong>City:</strong> <span>{submittedData.city}</span></p>
@@ -221,20 +233,27 @@ https://maps.app.goo.gl/5NKoQcKA87QVDXm37
           )}
           <p><strong>Phone Number:</strong> <span>{submittedData.phoneNumber}</span></p>
         </div>
-        <Button onClick={handleSave} className="success-btn" disabled={loading}>
+        <Button onClick={handleSave} className="success-btn w-full" disabled={loading}>
           <i className="fas fa-save"></i> {loading ? 'Saving...' : 'Save Donation'}
         </Button>
-        <Button onClick={handleGoBack} className="secondary-btn" style={{ marginTop: '10px' }}>
+        <Button onClick={handleGoBack} className="secondary-btn w-full" style={{ marginTop: '10px' }}>
           <i className="fas fa-arrow-left"></i> Go Back
         </Button>
-        {message && <div className="message error">{message}</div>}
+        {message && <div className="message error mt-4">{message}</div>}
+        {/* Decorative gold border bottom */}
+        <div className="absolute left-0 bottom-0 w-full h-2 rounded-b-2xl" style={{ background: 'linear-gradient(90deg, #b9935a 0%, #f2e1c2 100%)' }} />
       </div>
     )
   }
 
   return (
-    <div className="form-container active" id="customForm">
-      <h2><i className="fas fa-donate"></i> Enter Donation Details</h2>
+    <div className="form-container active max-w-lg mx-auto border-2 border-amber-400 rounded-2xl bg-white/90 shadow-xl p-10 relative" id="customForm">
+      {/* Decorative gold border top */}
+      <div className="absolute left-0 top-0 w-full h-2 rounded-t-2xl" style={{ background: 'linear-gradient(90deg, #b9935a 0%, #f2e1c2 100%)' }} />
+      <h2 className="text-3xl font-display font-bold text-center mb-8 text-amber-900 drop-shadow-lg tracking-wide flex flex-col items-center gap-2">
+        <span className="inline-block text-4xl text-yellow-700"><i className="fas fa-donate"></i></span>
+        Enter Donation Details
+      </h2>
       <div className="form-group">
         <Label>Donation Type:</Label>
         <div className="toggle-buttons">
@@ -274,11 +293,13 @@ https://maps.app.goo.gl/5NKoQcKA87QVDXm37
           <i className="fas fa-address-book contact-picker-icon" onClick={handlePickContact} title="Pick from contacts"></i>
         </div>
       </div>
-      <Button onClick={handleSubmit} disabled={loading}>
+      <Button onClick={handleSubmit} disabled={loading} className="w-full mt-2">
         <span>{loading ? 'Submitting...' : 'Submit'}</span>
         <i className={loading ? 'fas fa-spinner fa-spin' : 'fas fa-paper-plane'}></i>
       </Button>
-      {message && <div className={message.startsWith('Error') ? "message error" : "message success"}>{message}</div>}
+      {message && <div className={message.startsWith('Error') ? "message error mt-4" : "message success mt-4"}>{message}</div>}
+      {/* Decorative gold border bottom */}
+      <div className="absolute left-0 bottom-0 w-full h-2 rounded-b-2xl" style={{ background: 'linear-gradient(90deg, #b9935a 0%, #f2e1c2 100%)' }} />
     </div>
   );
 };
