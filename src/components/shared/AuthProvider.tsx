@@ -32,15 +32,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (userDoc.exists()) {
           const customData = userDoc.data();
-          console.log('customData from Firestore:', customData);
-          for (const key in customData) {
-            console.log(`Key: ${key}, Value: ${customData[key]}`);
-          }
           setUser({
             ...firebaseUser,
             name: customData.name,
             mobile: customData.mobile,
-            isMaster: customData['isMaster'], // Directly assign without fallback
+            isMaster: customData['Field ID: isMaster'], // Correctly access the field
           });
         } else {
           // Handle case where user exists in Auth but not in Firestore
