@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             ...firebaseUser,
             name: customData.name,
             mobile: customData.mobile,
-            isMaster: customData['isMaster'] || false, // Access using bracket notation
+            isMaster: customData['isMaster'], // Directly assign without fallback
           });
         } else {
           // Handle case where user exists in Auth but not in Firestore
