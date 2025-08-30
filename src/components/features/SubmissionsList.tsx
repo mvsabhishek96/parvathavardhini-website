@@ -11,11 +11,12 @@ import * as XLSX from 'xlsx';
 import { Submission, CashSubmission, InKindSubmission } from '@/types/submission';
 import CommitteeMemberCard from './CommitteeMemberCard';
 import Link from 'next/link';
+import { CommitteeMember } from '@/types/committee';
 
 const SubmissionsList = () => {
   const { user } = useAuth();
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
-  const [committeeMembers, setCommitteeMembers] = useState<any[]>([]);
+  const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
@@ -37,10 +38,10 @@ const SubmissionsList = () => {
         const membersQuery = query(collection(db, 'CommitteeMembers'));
         const membersSnapshot = await getDocs(membersQuery);
         const membersData = membersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setCommitteeMembers(membersData);
+        setCommitteeMembers(membersData as CommitteeMember[]);
 
         let allSubmissions: Submission[] = [];
-        for (const member of membersData) {
+        for (const member of membersData as CommitteeMember[]) {
           const cashQuery = query(collection(db, "CommitteeMembers", member.id, "Submissions"));
           const inKindQuery = query(collection(db, "CommitteeMembers", member.id, "InKindDonations"));
 
@@ -77,14 +78,14 @@ const SubmissionsList = () => {
   const filteredAndSortedSubmissions = useMemo(() => {
     let submissions = allSubmissions;
     if (user?.isMaster && viewMode === 'individual' && selectedMemberId) {
-        submissions = allSubmissions.filter(s => (s as any).collectedBy === committeeMembers.find(m => m.id === selectedMemberId)?.name);
+        submissions = allSubmissions.filter(s => s.collectedBy === committeeMembers.find(m => m.id === selectedMemberId)?.name);
     }
 
     const filtered = submissions.filter(item => {
       const name = item.name || '';
       const city = item.city || '';
       const phone = item.phoneNumber || '';
-      const collectedBy = (item as any).collectedBy || '';
+      const collectedBy = item.collectedBy || '';
 
       const matchesSearch = searchTerm === '' ||
         name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -140,13 +141,19 @@ const SubmissionsList = () => {
   const handleEdit = (submission: Submission) => setEditingSubmission(submission);
   const handleCloseEditForm = () => setEditingSubmission(null);
 
-  const handleDelete = async (submissionId: string, submissionType: string) => {
+  const handleDelete = async (submission: Submission) => {
     if (!user) return;
     if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
       try {
-        const collectionName = submissionType === 'amount' ? "Submissions" : "InKindDonations";
-        const memberEmail = user.isMaster ? committeeMembers.find(m => m.submissions.find(s => s.id === submissionId))?.id : user.email!;
-        const docRef = doc(db, "CommitteeMembers", memberEmail, collectionName, submissionId);
+        const collectionName = submission.type === 'amount' ? "Submissions" : "InKindDonations";
+        const memberEmail = user.isMaster ? committeeMembers.find(m => m.name === submission.collectedBy)?.id : user.email!;
+
+        if (!memberEmail) { // Add this check
+          console.error('Error: Could not determine member email for deletion.');
+          return;
+        }
+
+        const docRef = doc(db, "CommitteeMembers", memberEmail, collectionName, submission.id);
         await deleteDoc(docRef);
         fetchSubmissions(); // Refetch submissions after deleting
       } catch (error) {
@@ -165,7 +172,7 @@ const SubmissionsList = () => {
             'Items': item.type === 'inKind' ? (item as InKindSubmission).description : '',
             'Phone Number': item.phoneNumber,
             'Date': item.timestamp?.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) || 'N/A',
-            'Collected By': (item as any).collectedBy || user?.name || user?.email
+            'Collected By': item.collectedBy || user?.name || user?.email
         }));
 
         const ws = XLSX.utils.json_to_sheet(dataForExport);
@@ -204,11 +211,11 @@ const SubmissionsList = () => {
                 : (submission as InKindSubmission).description}
             </td>
             <td data-label="Date">{submission.timestamp?.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) || 'N/A'}</td>
-            {user?.isMaster && viewMode === 'combined' && <td data-label="Collected By">{(submission as any).collectedBy || 'N/A'}</td>}
+            {user?.isMaster && viewMode === 'combined' && <td data-label="Collected By">{submission.collectedBy || 'N/A'}</td>}
             <td className="action-cell">
               <Button className="view-btn" onClick={() => handleView(submission)}><i className="fas fa-eye"></i> View</Button>
               <Button className="edit-btn" onClick={() => handleEdit(submission)}><i className="fas fa-edit"></i></Button>
-              <Button className="delete-btn" onClick={() => handleDelete(submission.id, submission.type)}><i className="fas fa-trash"></i></Button>
+              <Button className="delete-btn" onClick={() => handleDelete(submission)}><i className="fas fa-trash"></i></Button>
             </td>
           </tr>
         ))}
@@ -246,7 +253,7 @@ const SubmissionsList = () => {
                     {committeeMembers.map(member => (
                         <CommitteeMemberCard 
                             key={member.id} 
-                            member={{...member, submissions: allSubmissions.filter(s => (s as any).collectedBy === member.name)}} 
+                            member={{...member, name: member.name || 'Unknown', submissions: allSubmissions.filter(s => s.collectedBy === member.name)}} 
                             onViewSubmissions={() => {setSelectedMemberId(member.id); setViewMode('member_submissions');}} 
                         />
                     ))}
@@ -273,7 +280,7 @@ const SubmissionsList = () => {
             {viewMode === 'member_submissions' && selectedMemberId && (
                 <div>
                     <Button onClick={() => {setSelectedMemberId(null); setViewMode('individual');}}>Back to All Members</Button>
-                    <h2 className="text-2xl font-bold my-4">{committeeMembers.find(m => m.id === selectedMemberId)?.name}'s Submissions</h2>
+                    <h2 className="text-2xl font-bold my-4">{committeeMembers.find(m => m.id === selectedMemberId)?.name}&apos;s Submissions</h2>
                     {renderSubmissionsTable(filteredAndSortedSubmissions)}
                 </div>
             )}

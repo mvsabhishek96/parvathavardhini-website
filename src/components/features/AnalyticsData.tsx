@@ -1,22 +1,23 @@
-import { Submission } from '@/types/submission';
+import { Submission, CashSubmission, InKindSubmission } from '@/types/submission';
+import { CommitteeMember } from '@/types/committee';
 
 interface AnalyticsDataProps {
   allSubmissions: Submission[];
-  committeeMembers: any[];
+  committeeMembers: CommitteeMember[];
 }
 
 const AnalyticsData = ({ allSubmissions, committeeMembers }: AnalyticsDataProps) => {
   const totalAmount = allSubmissions
     .filter((s) => s.type === 'amount')
-    .reduce((acc, s) => acc + (s as any).amount, 0);
+    .reduce((acc, s) => acc + (s as CashSubmission).amount, 0);
 
   const totalSubmissions = allSubmissions.length;
 
   const memberStats = committeeMembers.map(member => {
-    const memberSubmissions = allSubmissions.filter(s => (s as any).collectedBy === member.name);
+    const memberSubmissions = allSubmissions.filter(s => s.collectedBy === member.name);
     const memberTotalAmount = memberSubmissions
       .filter(s => s.type === 'amount')
-      .reduce((acc, s) => acc + (s as any).amount, 0);
+      .reduce((acc, s) => acc + (s as CashSubmission).amount, 0);
     return {
       ...member,
       totalSubmissions: memberSubmissions.length,
@@ -56,12 +57,12 @@ const AnalyticsData = ({ allSubmissions, committeeMembers }: AnalyticsDataProps)
           <h2 className="text-3xl font-bold mb-6">Top Performing Members</h2>
           <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
             <ul>
-              {memberStats.map((member, index) => (
+              {memberStats.map((member) => (
                 <li key={member.id} className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center">
                       <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-lg font-bold text-gray-600 dark:text-gray-300 mr-4">
-                        {member.name.charAt(0)}
+                        {member.name ? member.name.charAt(0) : ''}
                       </div>
                       <div>
                         <p className="font-bold text-lg">{member.name}</p>
@@ -88,10 +89,10 @@ const AnalyticsData = ({ allSubmissions, committeeMembers }: AnalyticsDataProps)
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-bold">{submission.name}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">by {(submission as any).collectedBy}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">by {submission.collectedBy}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold">{submission.type === 'amount' ? `₹${(submission as any).amount.toFixed(2)}` : (submission as any).description}</p>
+                      <p className="font-bold">{submission.type === 'amount' ? `₹${(submission as CashSubmission).amount.toFixed(2)}` : (submission as InKindSubmission).description}</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">{submission.timestamp?.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                     </div>
                   </div>

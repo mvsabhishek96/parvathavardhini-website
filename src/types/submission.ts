@@ -9,6 +9,7 @@ interface BaseSubmission {
   };
   committeeMember: string;
   committeeMemberName: string;
+  collectedBy: string;
 }
 
 interface CashSubmission extends BaseSubmission {

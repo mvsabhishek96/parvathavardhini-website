@@ -1,4 +1,4 @@
-import { Submission } from '@/types/submission';
+import { Submission, CashSubmission } from '@/types/submission';
 
 interface CommitteeMemberCardProps {
   member: {
@@ -13,7 +13,7 @@ const CommitteeMemberCard = ({ member, onViewSubmissions }: CommitteeMemberCardP
   const totalSubmissions = member.submissions.length;
   const totalAmount = member.submissions
     .filter((s) => s.type === 'amount')
-    .reduce((acc, s) => acc + (s as any).amount, 0);
+    .reduce((acc, s) => acc + (s as CashSubmission).amount, 0);
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 m-4 w-full max-w-sm">
