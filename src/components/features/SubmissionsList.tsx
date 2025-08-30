@@ -37,16 +37,20 @@ const SubmissionsList = () => {
     try {
       if (user.isMaster) {
         const membersQuery = query(collection(db, 'CommitteeMembers'));
+        console.log('Attempting to fetch CommitteeMembers...');
         const membersSnapshot = await getDocs(membersQuery);
+        console.log('Successfully fetched CommitteeMembers.', membersSnapshot.docs.length, 'members found.');
         const membersData = membersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setCommitteeMembers(membersData as CommitteeMember[]);
 
         let allSubmissions: Submission[] = [];
         for (const member of membersData as CommitteeMember[]) {
+          console.log('Attempting to fetch submissions for member:', member.id);
           const cashQuery = query(collection(db, "CommitteeMembers", member.id, "Submissions"));
           const inKindQuery = query(collection(db, "CommitteeMembers", member.id, "InKindDonations"));
 
           const [cashSnapshot, inKindSnapshot] = await Promise.all([getDocs(cashQuery), getDocs(inKindQuery)]);
+          console.log('Successfully fetched submissions for member:', member.id, 'Cash:', cashSnapshot.docs.length, 'InKind:', inKindSnapshot.docs.length);
 
           const cashData: CashSubmission[] = cashSnapshot.docs.map(doc => ({ id: doc.id, type: 'amount', collectedBy: member.name, ...doc.data() } as CashSubmission));
           const inKindData: InKindSubmission[] = inKindSnapshot.docs.map(doc => ({ id: doc.id, type: 'inKind', collectedBy: member.name, ...doc.data() } as InKindSubmission));
