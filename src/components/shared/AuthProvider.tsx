@@ -32,6 +32,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (userDoc.exists()) {
           const customData = userDoc.data();
+          console.log('customData from Firestore:', customData);
+          console.log('customData.isMaster:', customData.isMaster);
           setUser({
             ...firebaseUser,
             name: customData.name,
