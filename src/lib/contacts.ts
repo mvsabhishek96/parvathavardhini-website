@@ -32,9 +32,17 @@ export const pickContact = async (): Promise<string | null> => {
 
 const sanitizePhoneNumber = (phone: string) => {
   if (!phone) return '';
+  // Remove all non-digit characters
   let sanitized = phone.replace(/\D/g, '');
-  if (sanitized.startsWith('91') && sanitized.length > 10) {
-      sanitized = sanitized.substring(2);
+
+  // If the number starts with '91' and is 12 digits long, remove the '91'
+  if (sanitized.length === 12 && sanitized.startsWith('91')) {
+    sanitized = sanitized.substring(2);
   }
+  // If the number starts with '0' and is 11 digits long, remove the '0'
+  else if (sanitized.length === 11 && sanitized.startsWith('0')) {
+    sanitized = sanitized.substring(1);
+  }
+
   return sanitized;
-}
+};

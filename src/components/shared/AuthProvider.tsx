@@ -9,6 +9,7 @@ import { doc, getDoc } from 'firebase/firestore';
 export interface AuthUser extends FirebaseUser {
   name?: string;
   mobile?: string;
+  isMaster?: boolean;
 }
 
 interface AuthContextType {
@@ -35,6 +36,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             ...firebaseUser,
             name: customData.name,
             mobile: customData.mobile,
+            isMaster: customData.isMaster || false,
           });
         } else {
           // Handle case where user exists in Auth but not in Firestore
