@@ -9,26 +9,23 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import * as XLSX from 'xlsx';
 import { Submission, CashSubmission, InKindSubmission } from '@/types/submission';
-import CommitteeMemberCard from './CommitteeMemberCard';
 import Link from 'next/link';
 import { CommitteeMember } from '@/types/committee';
 
 const SubmissionsList = () => {
   const { user } = useAuth();
-  console.log('User object in SubmissionsList:', user);
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
-  const [viewMode, setViewMode] = useState('individual'); // individual | combined
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState('individual'); // 'individual' or 'combined'
 
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [sortOrder, setSortOrder] = useState('amount_desc');
+  const [sortOrder, setSortOrder] = useState('date_desc');
 
   const fetchSubmissions = useCallback(async () => {
     if (!user) return;
@@ -37,28 +34,23 @@ const SubmissionsList = () => {
     try {
       if (user.isMaster) {
         const membersQuery = query(collection(db, 'CommitteeMembers'));
-        console.log('Attempting to fetch CommitteeMembers...');
         const membersSnapshot = await getDocs(membersQuery);
-        console.log('Successfully fetched CommitteeMembers.', membersSnapshot.docs.length, 'members found.');
         const membersData = membersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setCommitteeMembers(membersData as CommitteeMember[]);
 
-        let allSubmissions: Submission[] = [];
+        let allSubmissionsData: Submission[] = [];
         for (const member of membersData as CommitteeMember[]) {
-          console.log('Attempting to fetch submissions for member:', member.id);
           const cashQuery = query(collection(db, "CommitteeMembers", member.id, "Submissions"));
           const inKindQuery = query(collection(db, "CommitteeMembers", member.id, "InKindDonations"));
 
           const [cashSnapshot, inKindSnapshot] = await Promise.all([getDocs(cashQuery), getDocs(inKindQuery)]);
-          console.log('Successfully fetched submissions for member:', member.id, 'Cash:', cashSnapshot.docs.length, 'InKind:', inKindSnapshot.docs.length);
 
           const cashData: CashSubmission[] = cashSnapshot.docs.map(doc => ({ id: doc.id, type: 'amount', collectedBy: member.name, ...doc.data() } as CashSubmission));
           const inKindData: InKindSubmission[] = inKindSnapshot.docs.map(doc => ({ id: doc.id, type: 'inKind', collectedBy: member.name, ...doc.data() } as InKindSubmission));
 
-          allSubmissions = [...allSubmissions, ...cashData, ...inKindData];
+          allSubmissionsData = [...allSubmissionsData, ...cashData, ...inKindData];
         }
-        setAllSubmissions(allSubmissions);
-
+        setAllSubmissions(allSubmissionsData);
       } else {
         const cashQuery = query(collection(db, "CommitteeMembers", user.email!, "Submissions"));
         const inKindQuery = query(collection(db, "CommitteeMembers", user.email!, "InKindDonations"));
@@ -81,12 +73,14 @@ const SubmissionsList = () => {
   }, [fetchSubmissions]);
 
   const filteredAndSortedSubmissions = useMemo(() => {
-    let submissions = allSubmissions;
-    if (user?.isMaster && viewMode === 'individual' && selectedMemberId) {
-        submissions = allSubmissions.filter(s => s.collectedBy === committeeMembers.find(m => m.id === selectedMemberId)?.name);
+    let submissionsToProcess = allSubmissions;
+
+    // In individual mode, a master user sees their own submissions
+    if (user?.isMaster && viewMode === 'individual') {
+      submissionsToProcess = allSubmissions.filter(s => s.collectedBy === user.name);
     }
 
-    const filtered = submissions.filter(item => {
+    const filtered = submissionsToProcess.filter(item => {
       const name = item.name || '';
       const city = item.city || '';
       const phone = item.phoneNumber || '';
@@ -96,7 +90,7 @@ const SubmissionsList = () => {
         name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         city.toLowerCase().includes(searchTerm.toLowerCase()) ||
         phone.includes(searchTerm) ||
-        (user?.isMaster && collectedBy.toLowerCase().includes(searchTerm.toLowerCase()));
+        (user?.isMaster && viewMode === 'combined' && collectedBy.toLowerCase().includes(searchTerm.toLowerCase()));
 
       if (!matchesSearch) return false;
       if (!item.timestamp) return true;
@@ -119,21 +113,21 @@ const SubmissionsList = () => {
           return amountA - amountB;
         });
         break;
-      case 'date_desc':
-        filtered.sort((a, b) => (b.timestamp?.toDate().getTime() || 0) - (a.timestamp?.toDate().getTime() || 0));
-        break;
       case 'amount_desc':
-      default:
         filtered.sort((a, b) => {
           const amountA = a.type === 'amount' ? a.amount : 0;
           const amountB = b.type === 'amount' ? b.amount : 0;
           return amountB - amountA;
         });
         break;
+      case 'date_desc':
+      default:
+        filtered.sort((a, b) => (b.timestamp?.toDate().getTime() || 0) - (a.timestamp?.toDate().getTime() || 0));
+        break;
     }
 
     return filtered;
-  }, [allSubmissions, searchTerm, startDate, endDate, sortOrder, user, viewMode, selectedMemberId, committeeMembers]);
+  }, [allSubmissions, searchTerm, startDate, endDate, sortOrder, user, viewMode]);
 
   const totalAmount = useMemo(() => {
     return filteredAndSortedSubmissions
@@ -153,14 +147,14 @@ const SubmissionsList = () => {
         const collectionName = submission.type === 'amount' ? "Submissions" : "InKindDonations";
         const memberEmail = user.isMaster ? committeeMembers.find(m => m.name === submission.collectedBy)?.id : user.email!;
 
-        if (!memberEmail) { // Add this check
+        if (!memberEmail) {
           console.error('Error: Could not determine member email for deletion.');
           return;
         }
 
         const docRef = doc(db, "CommitteeMembers", memberEmail, collectionName, submission.id);
         await deleteDoc(docRef);
-        fetchSubmissions(); // Refetch submissions after deleting
+        fetchSubmissions();
       } catch (error) {
         console.error('Error deleting submission: ', error);
       }
@@ -193,7 +187,7 @@ const SubmissionsList = () => {
     return <EditForm submission={editingSubmission} onClose={handleCloseEditForm} onUpdate={fetchSubmissions} />;
   }
 
-  const renderSubmissionsTable = (submissions: Submission[]) => (
+  const renderSubmissionsTable = (submissions: Submission[], currentView: string) => (
     <table>
       <thead>
         <tr>
@@ -201,7 +195,7 @@ const SubmissionsList = () => {
           <th>City</th>
           <th>Donation</th>
           <th>Date</th>
-          {user?.isMaster && viewMode === 'combined' && <th>Collected By</th>}
+          {user?.isMaster && currentView === 'combined' && <th>Collected By</th>}
           <th>Actions</th>
         </tr>
       </thead>
@@ -216,7 +210,7 @@ const SubmissionsList = () => {
                 : (submission as InKindSubmission).description}
             </td>
             <td data-label="Date">{submission.timestamp?.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) || 'N/A'}</td>
-            {user?.isMaster && viewMode === 'combined' && <td data-label="Collected By">{submission.collectedBy || 'N/A'}</td>}
+            {user?.isMaster && currentView === 'combined' && <td data-label="Collected By">{submission.collectedBy || 'N/A'}</td>}
             <td className="action-cell">
               <Button className="view-btn" onClick={() => handleView(submission)}><i className="fas fa-eye"></i> View</Button>
               <Button className="edit-btn" onClick={() => handleEdit(submission)}><i className="fas fa-edit"></i></Button>
@@ -225,7 +219,7 @@ const SubmissionsList = () => {
           </tr>
         ))}
         <tr className="total-row">
-          <td data-label="Total" colSpan={user?.isMaster && viewMode === 'combined' ? 3 : 2}>Filtered Total Cash</td>
+          <td data-label="Total" colSpan={user?.isMaster && currentView === 'combined' ? 3 : 2}>Filtered Total Cash</td>
           <td data-label="Amount">₹{totalAmount.toFixed(2)}</td>
           <td colSpan={2}></td>
         </tr>
@@ -233,69 +227,61 @@ const SubmissionsList = () => {
     </table>
   );
 
+  // MASTER USER VIEW
   if (user?.isMaster) {
     return (
-        <div className="master-dashboard p-4 md:p-8">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-4xl font-bold">Master Dashboard</h1>
-                <div className="flex items-center space-x-4">
-                    <Link href="/analytics">
-                        <Button className="analytics-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">View Analytics</Button>
-                    </Link>
-                    <div className="flex items-center space-x-2">
-                        <span>Individual View</span>
-                        <label className="switch">
-                            <input type="checkbox" checked={viewMode === 'combined'} onChange={() => setViewMode(viewMode === 'individual' ? 'combined' : 'individual')} />
-                            <span className="slider round"></span>
-                        </label>
-                        <span>Combined View</span>
-                    </div>
-                </div>
+      <div className="master-dashboard p-4 md:p-8">
+        <div className="flex flex-wrap justify-between items-center mb-8 gap-4">
+          <h1 className="text-4xl font-bold">Master Dashboard</h1>
+          <div className="flex items-center space-x-4">
+            <Link href="/analytics">
+              <Button className="analytics-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">View Analytics</Button>
+            </Link>
+            <div className="flex items-center space-x-2 bg-gray-200 p-1 rounded-full">
+              <Button
+                onClick={() => setViewMode('individual')}
+                className={viewMode === 'individual' ? 'bg-white text-black shadow' : 'bg-transparent text-gray-600'}
+                style={{ borderRadius: '9999px', padding: '8px 16px' }}
+              >
+                My Submissions
+              </Button>
+              <Button
+                onClick={() => setViewMode('combined')}
+                className={viewMode === 'combined' ? 'bg-white text-black shadow' : 'bg-transparent text-gray-600'}
+                style={{ borderRadius: '9999px', padding: '8px 16px' }}
+              >
+                All Submissions
+              </Button>
             </div>
-
-            {viewMode === 'individual' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {committeeMembers.map(member => (
-                        <CommitteeMemberCard 
-                            key={member.id} 
-                            member={{...member, name: member.name || 'Unknown', submissions: allSubmissions.filter(s => s.collectedBy === member.name)}} 
-                            onViewSubmissions={() => {setSelectedMemberId(member.id); setViewMode('member_submissions');}} 
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div className="submissions-container">
-                    <div className="filters-container">
-                        <div><Label htmlFor="searchInput">Search</Label><Input type="text" id="searchInput" placeholder="Name, City, Phone, Member..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                        <div><Label htmlFor="startDate">Start Date</Label><Input type="date" id="startDate" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-                        <div><Label htmlFor="endDate">End Date</Label><Input type="date" id="endDate" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
-                        <div><Label htmlFor="sortOrder">Sort By</Label>
-                            <select id="sortOrder" value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md p-2">
-                                <option value="amount_desc">Amount (High to Low)</option>
-                                <option value="amount_asc">Amount (Low to High)</option>
-                                <option value="date_desc">Date (Newest First)</option>
-                            </select>
-                        </div>
-                        <Button onClick={downloadXlsx} className="export-button success-btn"><i className="fas fa-file-excel"></i> Export</Button>
-                    </div>
-                    {renderSubmissionsTable(filteredAndSortedSubmissions)}
-                </div>
-            )}
-
-            {viewMode === 'member_submissions' && selectedMemberId && (
-                <div>
-                    <Button onClick={() => {setSelectedMemberId(null); setViewMode('individual');}}>Back to All Members</Button>
-                    <h2 className="text-2xl font-bold my-4">{committeeMembers.find(m => m.id === selectedMemberId)?.name}&apos;s Submissions</h2>
-                    {renderSubmissionsTable(filteredAndSortedSubmissions)}
-                </div>
-            )}
-
-            {selectedSubmission && <SubmissionModal submission={selectedSubmission} onClose={handleCloseModal} />}
+          </div>
         </div>
+
+        <div className="submissions-container">
+          <h2 className="text-2xl font-bold my-4">
+            {viewMode === 'individual' ? 'My Submissions' : 'All Committee Member Submissions'}
+          </h2>
+          <div className="filters-container">
+            <div><Label htmlFor="searchInput">Search</Label><Input type="text" id="searchInput" placeholder="Name, City, Phone..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
+            <div><Label htmlFor="startDate">Start Date</Label><Input type="date" id="startDate" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+            <div><Label htmlFor="endDate">End Date</Label><Input type="date" id="endDate" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+            <div><Label htmlFor="sortOrder">Sort By</Label>
+                <select id="sortOrder" value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md p-2">
+                    <option value="date_desc">Date (Newest First)</option>
+                    <option value="amount_desc">Amount (High to Low)</option>
+                    <option value="amount_asc">Amount (Low to High)</option>
+                </select>
+            </div>
+            <Button onClick={downloadXlsx} className="export-button success-btn"><i className="fas fa-file-excel"></i> Export</Button>
+          </div>
+          {renderSubmissionsTable(filteredAndSortedSubmissions, viewMode)}
+        </div>
+
+        {selectedSubmission && <SubmissionModal submission={selectedSubmission} onClose={handleCloseModal} />}
+      </div>
     );
   }
 
-  // Regular user view
+  // REGULAR USER VIEW
   return (
     <>
       <div className="submissions-container">
@@ -305,9 +291,9 @@ const SubmissionsList = () => {
             <div><Label htmlFor="endDate">End Date</Label><Input type="date" id="endDate" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
             <div><Label htmlFor="sortOrder">Sort By</Label>
                 <select id="sortOrder" value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md p-2">
+                    <option value="date_desc">Date (Newest First)</option>
                     <option value="amount_desc">Amount (High to Low)</option>
                     <option value="amount_asc">Amount (Low to High)</option>
-                    <option value="date_desc">Date (Newest First)</option>
                 </select>
             </div>
             <Button onClick={downloadXlsx} className="export-button success-btn"><i className="fas fa-file-excel"></i> Export</Button>
@@ -316,7 +302,7 @@ const SubmissionsList = () => {
         {filteredAndSortedSubmissions.length === 0 ? (
           <p>No submissions match your filters.</p>
         ) : (
-          renderSubmissionsTable(filteredAndSortedSubmissions)
+          renderSubmissionsTable(filteredAndSortedSubmissions, 'individual')
         )}
       </div>
       {selectedSubmission && <SubmissionModal submission={selectedSubmission} onClose={handleCloseModal} />}

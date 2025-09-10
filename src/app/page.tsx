@@ -24,12 +24,12 @@ export default function HomePage() {
           <div className="loader"></div>
         ) : user ? (
           <>
-            <div id="top-bar" style={{ display: 'flex', width: '100%', maxWidth: '1000px', margin: '15px auto' }}>
+            <div id="top-bar" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: '1000px', margin: '15px auto', gap: '10px' }}>
               <div id="userInfo" className="user-info-display">
                 <i className="fas fa-user-check"></i>
                 <span>{user.email}</span>
               </div>
-              <div className="action-buttons">
+              <div className="action-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
                 <Button onClick={() => setShowSubmissions(!showSubmissions)}>
                   <i className="fas fa-list"></i> {showSubmissions ? 'Hide Submissions' : 'View Submissions'}
                 </Button>
